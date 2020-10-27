@@ -1,0 +1,212 @@
+---
+title: "Functional Data Analysis Pinch Data"
+author: "Rafaela Becerra"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Pinch Data
+## Load packages
+
+```{r message=FALSE}
+library(fda)
+library(fda.usc)
+
+
+```
+
+## Load pinch data set
+```{r }
+data <- pinch
+```
+
+## Values of the integrated, modal, random projection and spatial depths for the pinch forces.
+
+First we are generating the smooth functional data with a roughness penalty after selecting $\lambda$ with GCV and using a Fourier basis of 19.
+
+```{r }
+fourier.basis <- create.fourier.basis(rangeval=c(0,151),nbasis=19)
+```
+```{r }
+lambdas <- seq(1,100,by=0.1)
+head(lambdas)
+```
+
+Length of the new sequence:
+```{r }
+l.lambdas <- length(lambdas)
+l.lambdas
+```
+
+
+```{r }
+gcv.lambdas <- vector(mode="numeric",length=l.lambdas)
+
+for (i in 1:l.lambdas){
+  Fourier.pen <- fdPar(fdobj=fourier.basis,Lfdobj=2,lambda=lambdas[i])
+  smooth.data.pen <- smooth.basis(argvals=1:151,y=data,fdParobj=Fourier.pen)
+  gcv.lambdas[i] <- sum(smooth.data.pen$gcv)
+}
+
+```
+
+```{r }
+Fourier.pen <- fdPar(fdobj=fourier.basis,Lfdobj=2,lambda=lambdas[which.min(gcv.lambdas)])
+
+smooth.data.pen <- smooth.basis(argvals=1:151,y=data,fdParobj=Fourier.pen)
+```
+
+
+```{r}
+library(fda.usc)
+n <- 151
+var <- 20
+tt <- 1 : n
+smooth <- eval.fd(tt,smooth.data.pen$fd)
+fdataobj.pinch <- fdata(t(smooth),tt)
+```
+
+
+The depth of each function concerning the rest of the functions will be a measure that will show the centrality of it from the rest of the data set by considering its distance and also its shape. The deepest function will be considered as the most central one and the extreme will be denoted by the function or functions with the smaller values.  
+
+For all of the methods shown below, we have plotted depth graph that shows the less central functions in grey accentuated by its value, a percentage of a trimmed sample of 20% in blue and the most central function in the color red.
+
+### Integrated Depth
+
+The Fraiman and Muniz method for calculating depths can be understood as an average of the values of the depth throughout the observation interval. With this method, the depths graph shows that there are major differences between some curves, being the 20% trimmed sample pretty closed to the most central one but far from a distant curve. In detail, we see that the most extreme curve is the 15th and, on the contrary, the most central ones, which are considered to have the highest depth values, are the 10th and 3rd followed by the 9th and 14th.
+
+```{r}
+depth.FM <- depth.FM(fdataobj.pinch,trim=.20,draw=TRUE)
+
+plot(1:var,depth.FM$dep,
+     col="deepskyblue2",pch=19,
+     ylim=c(min(depth.FM$dep)-0.1,max(depth.FM$dep)+0.1),
+     xlab="Pinch force replications",
+     ylab="Value of the depth",
+     main="Fraiman and Muniz depth for Pinch force replications")
+
+text(1:var,depth.FM$dep,labels=as.character(1:var),pos=1,col="firebrick2",cex=0.7)
+```
+
+### Modal Depth
+If we consider the most central curve as the function most densely surrounded by the other functions, we get that the extreme function is given by the 15th replication and the most central group including the 14th, 9th, followed by the 3th and 18th. When comparing to the integrating method, we can see that the 15th remains as the less central but in this case the 10th replication becomes less central. Additionally, through the Depth graph we can see that the curves below the red one become more central than the rest, conversely, the FR method showed that the curves above it were more central. Moreover, we can identify a bigger distance between the 15th measurement and the rest.  
+
+```{r}
+depth.mode <- depth.mode(fdataobj.pinch,trim=.2,draw=TRUE)
+
+plot(1:var,depth.mode$dep,
+     col="deepskyblue2",pch=19,
+     ylim=c(min(depth.mode$dep)-0.5,max(depth.mode$dep)+0.5),
+     xlab="Pinch force replications",
+     ylab="Value of the depth",
+     main="Modal depth for Pinch force replications")
+
+text(1:var,depth.mode$dep,labels=as.character(1:var),pos=1,col="firebrick2",cex=0.7)
+```
+
+
+### Random projection Depth
+
+On the other side if we project the functions in random directions and get the univariate depths of each set of the projections and then average the univariate depths to obtain the depths of the set of functions, we can see that the results remain the same that with the modal depth. The extreme function is given by the 15th replication and that the most central one is the 14th, followed by the 18th, 9th and 3rd. Moreover, we can see that the 14th replication gains a little bit of centrality and the difference with the 18th observation becomes smaller, also the difference between this group of replications and the rest grows, causing a blank space and then we can identify another group of replications that are less central and finally, the 17th and 15th observations at the extreme.The value of the depth will depend on the random projections generated, in this case, if the number of projections is higher than 60 we can see that the difference between the 15th and 17th replication becomes smaller. 
+
+
+```{r}
+depth.RP <- depth.RP(fdataobj.pinch,nproj=60,trim=.2,draw=TRUE)
+
+plot(1:var,depth.RP$dep,
+     col="deepskyblue2",pch=19,
+     ylim=c(min(depth.RP$dep)-0.05,max(depth.RP$dep)+0.05),
+     xlab="Pinch force replications",
+     ylab="Value of the depth",
+     main="Random projections depth for Pinch force replications")
+
+text(1:var,depth.RP$dep,labels=as.character(1:var),pos=1,col="firebrick2",cex=0.7)
+```
+
+### Spatial Depth
+
+If we use the functional spatial depth we can see that the results are similar to the past three methods as the most central group of obervations are the 9th, 14th, 18th and 3rd, conversely, the least central one is the 15th. Unlike what we saw in the past methods, the 9th replication gains prominence and the observations are more dispersed, marking more differences between all and not being able to identify a group marked in the center of the graph. Moreover, the difference between the 15th and 17th decreases.
+
+```{r}
+depth.FSD <- depth.FSD(fdataobj.pinch,trim=.2,draw=TRUE)
+
+plot(1:var,depth.FSD$dep,
+     col="deepskyblue2",pch=19,
+     ylim=c(min(depth.FSD$dep)-0.05,max(depth.FSD$dep)+0.05),
+     xlab="Pinch force replications",
+     ylab="Value of the depth",
+     main="Functional spatial depth for Pinch force replications")
+
+text(1:var,depth.FSD$dep,labels=as.character(1:var),pos=1,col="firebrick2",cex=0.7)
+```
+
+If we compare all the methods we can see more or less similar results, all indicated that observation 15 is the most extreme with the lowest value of depth, on the contrary, the replication with the highest value varies from method to method, however, we can see that the highest values are concentrated between the 9th, 14th, 18th and 3rd for three of the four methods. The FM method is the one that differs the most in terms of results from this group, pointing to the most central observation as 10. As the scatter plot shows, there exist in fact a highly linear relationship between methods and that the FM shows the most disperse relation. Additionally, if we plot the colored smooth functional curves, we can realise that the 15th was the most disperse curve that reaches higher points and differs from the rest if we see the late cycle of the force values.
+
+ 
+```{r}
+all.depths <- cbind(depth.FM$dep,depth.mode$dep,depth.RP$dep,depth.FSD$dep)
+
+colnames(all.depths) <- c("FM","Modal","RP","Spatial")
+
+pairs(all.depths,col="deepskyblue2",pch=19)
+```
+
+
+```{r}
+colors <- c(rep("deepskyblue2",8), rep("orange",1),rep("deepskyblue2",4),
+            rep("orange",1),rep("chartreuse2",1),rep("deepskyblue2",2),
+            rep("orange",1),rep("deepskyblue2",2))
+
+plot(smooth.data.pen,
+     lty=1,lwd=2,col=colors,
+     main=c("Smoothed Pinch Force (lambda=8, FB =19) and ","functional standard deviation"),
+     xlab="Observations (Time sequence from start every 2 milliseconds)",
+     ylab="Measurements (Newtons)")
+
+legend("topright", as.character(seq(1,20)),col=colors,cex=0.8,
+       fill=colors, ncol=2)
+```
+
+
+## Outlier detection procedures based on trimming and weighting to the pinch forces.
+
+### Trimming 
+```{r}
+out.trimming <- outliers.depth.trim(fdataobj.pinch, nb = 300)
+out.trimming
+```
+
+### Weighting
+```{r}
+out.weighting <- outliers.depth.pond(fdataobj.pinch, nb=300)
+out.weighting
+```
+
+```{r}
+colors <- c(rep("deepskyblue2",14),rep("chartreuse2",1),rep("deepskyblue2",5))
+
+plot(smooth.data.pen,
+     lty=1,lwd=2,col=colors,
+     main=c("Smoothed Pinch Force (lambda=8, FB =19) and ","functional outliers"),
+     xlab="Observations (Time sequence from start every 2 milliseconds)",
+     ylab="Measurements (Newtons)")
+
+legend("topright", as.character(seq(1,20)),col=colors,cex=0.8,
+       fill=colors, ncol=2)
+```
+
+The outliers can be understood as functions that do not follow the same pattern as that of the rest, outliers might be aggregating bias to the functional estimates and need to be identify to decide if they should be remove if are considered that its calculations were not accurate or keep under certain criteria. 
+
+After obtaining the functional depths, one can get the standard bootstrap samples from the data set of functions after deleting the $\alpha$% less deepest curves or such that each function is sampled with a probability proportional to its depth, this will be the main difference between the trimming and weighting procedures for detecting outliers. The $\alpha$ has been set to 0.01, and the $\gamma$ parameter for Obtaining the smoothed bootstrap samples in both escenarios has been set to 0.05 to find the $C$ cutoff for calcultating the portion of functional outliers. Additionally, the number of iteration for both methods has been set to 300. As the results showed a clear outlier can be identify for the data set which corresponds to the 15th obervation with a depth value of 0.7781, conversely, the most entral one being the 14th replication with 3.7184, followed by the 9th with 3.34 and 18th with a resulting depth of 3.22. Also the threshold for outlier detection has almost been the same for both methods.
+
